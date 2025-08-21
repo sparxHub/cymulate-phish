@@ -9,7 +9,7 @@
 - **MongoDB** for users/attempts
 - **MailHog** (dev) for catching emails
 
-> Dockerizing the apps is **bonus**; this MVP uses Docker only for Mongo + MailHog.
+
 
 ---
 
