@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { PhishingModule } from './phishing/phishing.module';
-import { PhishingModule } from './phishing/phishing.module';
 
 @Module({
   imports: [
