@@ -9,7 +9,11 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "JWT_SECRET=test-secret MONGO_URI=mongodb://localhost:27017/cymulate-test jest __tests__"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -64,7 +68,7 @@
       "ts"
     ],
     "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "testRegex": "(.*\\.(test|spec)\\.ts$|__tests__/.*\\.spec\\.ts$)",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
