@@ -1,13 +1,16 @@
+/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { HttpService } from '@nestjs/axios';
 import { Model, Types } from 'mongoose';
+import { firstValueFrom } from 'rxjs';
 import { Attempt, AttemptDocument } from './attempt.schema';
-import axios from 'axios';
 
 @Injectable()
 export class AttemptsService {
   constructor(
     @InjectModel(Attempt.name) private model: Model<AttemptDocument>,
+    private httpService: HttpService,
   ) {}
 
   list() {
@@ -22,19 +25,19 @@ export class AttemptsService {
     });
 
     // call Simulation API
-    await axios
-      .post(
+    await firstValueFrom(
+      this.httpService.post(
         `${process.env.SIM_API_URL}/phishing/send`,
         { attemptId: String(doc._id) },
         { headers: { 'x-internal-token': process.env.SIM_INTERNAL_TOKEN! } },
       )
-      .catch(async (e) => {
-        await this.model.updateOne(
-          { _id: doc._id },
-          { $set: { status: 'FAILED', error: String(e) } },
-        );
-        throw e;
-      });
+    ).catch(async (e: any) => {
+      await this.model.updateOne(
+        { _id: doc._id },
+        { $set: { status: 'FAILED', error: String(e) } },
+      );
+      throw e;
+    });
 
     // sim-api will update to SENT
     return this.model.findById(doc._id).lean();

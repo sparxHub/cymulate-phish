@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { AttemptsController } from './attempts.controller';
 import { AttemptsService } from './attempts.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LocationGuard } from '../auth/location.guard';
 
 describe('AttemptsController', () => {
   let controller: AttemptsController;
-
-  const mockAttemptsService = {
-    list: jest.fn().mockResolvedValue([]),
-    createAndSend: jest.fn().mockResolvedValue({ id: 'test-id', recipientEmail: 'test@example.com' }),
-  };
+  let service: AttemptsService;
+  let locationGuard: LocationGuard;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -16,29 +16,67 @@ describe('AttemptsController', () => {
       providers: [
         {
           provide: AttemptsService,
-          useValue: mockAttemptsService,
+          useValue: {
+            list: jest.fn(),
+            createAndSend: jest.fn(),
+          },
+        },
+        {
+          provide: JwtAuthGuard,
+          useValue: {
+            canActivate: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: LocationGuard,
+          useValue: {
+            canActivate: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     controller = module.get<AttemptsController>(AttemptsController);
+    service = module.get<AttemptsService>(AttemptsService);
+    locationGuard = module.get<LocationGuard>(LocationGuard);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  describe('POST /attempts', () => {
+    it('should allow creation from Israeli IP', async () => {
+      const createDto = { recipientEmail: 'test@example.com' };
+      const mockReq = {
+        user: { sub: 'user123' },
+        location: { country: 'IL', city: 'Tel Aviv' },
+      };
+
+      (service.createAndSend as jest.Mock).mockResolvedValue({ id: '123' });
+      (locationGuard.canActivate as jest.Mock).mockResolvedValue(true);
+
+      const result = await controller.create(createDto, mockReq);
+
+      expect(service.createAndSend).toHaveBeenCalledWith(createDto, 'user123');
+      expect(result).toEqual({ id: '123' });
+    });
+
+    it('should block creation from non-Israeli IP', () => {
+      (locationGuard.canActivate as jest.Mock).mockImplementation(() => {
+        throw new ForbiddenException('Access denied from US');
+      });
+
+      expect(() => locationGuard.canActivate({} as any)).toThrow(
+        ForbiddenException,
+      );
+    });
   });
 
-  it('should list attempts', async () => {
-    const result = await controller.list();
-    expect(result).toEqual([]);
-    expect(mockAttemptsService.list).toHaveBeenCalled();
-  });
+  describe('GET /attempts', () => {
+    it('should not apply location guard to list endpoint', async () => {
+      (service.list as jest.Mock).mockResolvedValue([]);
 
-  it('should create an attempt', async () => {
-    const dto = { recipientEmail: 'test@example.com' };
-    const req = { user: { sub: 'user-id' } };
-    const result = await controller.create(dto, req);
-    expect(result).toEqual({ id: 'test-id', recipientEmail: 'test@example.com' });
-    expect(mockAttemptsService.createAndSend).toHaveBeenCalledWith(dto, 'user-id');
+      const result = await controller.list();
+
+      expect(service.list).toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
   });
 });
