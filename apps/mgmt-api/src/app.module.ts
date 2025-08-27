@@ -11,9 +11,9 @@ import { AttemptsModule } from './attempts/attempts.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(process.env.MONGO_URI!),
-    UsersModule, 
-    AuthModule, 
-    AttemptsModule
+    UsersModule,
+    AuthModule,
+    AttemptsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

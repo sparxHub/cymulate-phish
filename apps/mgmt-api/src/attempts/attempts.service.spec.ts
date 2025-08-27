@@ -4,9 +4,6 @@ import { HttpService } from '@nestjs/axios';
 import { AttemptsService } from './attempts.service';
 import { Attempt } from './attempt.schema';
 import { of } from 'rxjs';
-import axios from 'axios';
-
-jest.mock('axios');
 
 describe('AttemptsService', () => {
   let service: AttemptsService;
@@ -30,7 +27,7 @@ describe('AttemptsService', () => {
     // Set environment variables for the test
     process.env.SIM_API_URL = 'http://localhost:4001';
     process.env.SIM_INTERNAL_TOKEN = 'test-token';
-    
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AttemptsService,
@@ -46,7 +43,7 @@ describe('AttemptsService', () => {
     }).compile();
 
     service = module.get<AttemptsService>(AttemptsService);
-    
+
     // Reset mocks
     mockAttemptModel.find.mockReturnThis();
     mockAttemptModel.sort.mockReturnThis();
@@ -64,11 +61,13 @@ describe('AttemptsService', () => {
   });
 
   it('should list attempts', async () => {
-    const mockAttempts = [{ id: 'attempt-1', recipientEmail: 'test@example.com' }];
+    const mockAttempts = [
+      { id: 'attempt-1', recipientEmail: 'test@example.com' },
+    ];
     mockAttemptModel.lean.mockResolvedValue(mockAttempts);
 
     const result = await service.list();
-    
+
     expect(result).toEqual(mockAttempts);
     expect(mockAttemptModel.find).toHaveBeenCalled();
     expect(mockAttemptModel.sort).toHaveBeenCalledWith({ createdAt: -1 });
@@ -79,18 +78,24 @@ describe('AttemptsService', () => {
     const dto = { recipientEmail: 'test@example.com' };
     const validUserId = '507f1f77bcf86cd799439011';
     const mockAttempt = { _id: 'attempt-id', ...dto, createdBy: validUserId };
-    
+
     mockAttemptModel.create.mockResolvedValue(mockAttempt);
     mockAttemptModel.findById.mockReturnThis();
     mockAttemptModel.lean.mockResolvedValue(mockAttempt);
-    
-    // Mock axios post
-    (axios.post as jest.MockedFunction<typeof axios.post>).mockResolvedValue({
-      data: { success: true }
-    });
+
+    // Mock HttpService post to return Observable
+    mockHttpService.post.mockReturnValue(
+      of({
+        data: { success: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      }),
+    );
 
     const result = await service.createAndSend(dto, validUserId);
-    
+
     expect(result).toEqual(mockAttempt);
     expect(mockAttemptModel.create).toHaveBeenCalled();
   });
